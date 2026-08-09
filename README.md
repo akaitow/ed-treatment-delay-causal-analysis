@@ -16,13 +16,16 @@ The point estimate is compatible with higher mortality under longer delay, but t
 
 ## Why this project matters
 
-This is a practical example of Simpson's paradox and the limits of observational causal inference. The most valuable result is not a dramatic causal claim; it is a transparent workflow that:
+This is a practical example of Simpson's paradox and the limits of observational causal inference. When deliberately assigning harmful delays would make an RCT unethical or impractical, causal methods can emulate a clearly defined intervention contrast from observed data. They do not recreate randomization: the result remains conditional on measured confounding, overlap, consistency, and correct time ordering.
+
+The most valuable result is not a dramatic causal claim; it is a transparent workflow that:
 
 1. defines the low-severity cohort before modeling;
 2. separates pre-treatment covariates from downstream outcomes;
-3. cross-fits propensity and outcome models by patient;
-4. reports balance, overlap, effective sample size, and extreme weights;
-5. keeps uncertainty and unmeasured confounding visible.
+3. uses propensity scores inside a doubly robust AIPW estimator;
+4. cross-fits propensity and outcome models by patient;
+5. reports balance, overlap, effective sample size, and extreme weights;
+6. keeps uncertainty and unmeasured confounding visible.
 
 ## Main results
 
@@ -52,7 +55,7 @@ This is a practical example of Simpson's paradox and the limits of observational
 - **Diagnostics:** standardized mean differences, propensity range and clipping, inverse-probability weight distribution, and effective sample size.
 - **Sensitivity:** the analysis is repeated at 120-, 160-, and 200-minute thresholds.
 
-See [methodology.md](reports/methodology.md) for the full specification and [validation_report.md](reports/validation_report.md) for the quality review.
+Start with the [storytelling notebook](notebooks/low_severity_delay_causal_analysis.ipynb) for the EDA, Simpson's paradox, RCT motivation, propensity scores, and doubly robust estimate. See [methodology.md](reports/methodology.md) for the full specification and [validation_report.md](reports/validation_report.md) for the quality review.
 
 ## Reproduce the analysis
 
@@ -81,6 +84,8 @@ The script rewrites the aggregate files in `results/`, the four figures in `figu
 │   ├── README.md               # data contract and publication safeguards
 │   └── raw/                    # ignored by Git
 ├── figures/                    # publication-ready aggregate charts
+├── notebooks/
+│   └── low_severity_delay_causal_analysis.ipynb
 ├── reports/
 │   ├── methodology.md          # estimand, models, assumptions, diagnostics
 │   ├── results.md              # generated results snapshot
@@ -110,4 +115,3 @@ The script rewrites the aggregate files in `results/`, the four figures in `figu
 ## Responsible use
 
 This repository is an analytical portfolio project, not clinical guidance. Do not use its estimates for patient-care or operational decisions without validating the source data, clinical definitions, causal assumptions, and model specification with domain experts.
-

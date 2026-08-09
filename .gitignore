@@ -1,4 +1,5 @@
 __pycache__/
+**/.ipynb_checkpoints/
 *.py[cod]
 .pytest_cache/
 .venv/
@@ -8,4 +9,3 @@ venv/
 # Raw patient-level workbooks are intentionally excluded.
 data/raw/*
 !data/raw/.gitkeep
-

@@ -4,6 +4,8 @@
 
 The target question is whether mortality risk would differ if otherwise comparable low-severity emergency-department visits experienced treatment delay at or above 160 minutes rather than below 160 minutes.
 
+An RCT would be the strongest design for making treatment timing independent of prognosis, but deliberately imposing treatment delays may be unethical or infeasible. This analysis therefore emulates a defined intervention contrast using observational data. It does not reproduce randomization, and identification depends on consistency, conditional exchangeability, positivity, and correct temporal ordering.
+
 The estimand is the average treatment effect on the risk-difference scale in the eligible population:
 
 `E[Y(High delay) − Y(Lower delay)]`
@@ -72,4 +74,3 @@ These assumptions cannot be fully verified from the workbook. In particular, con
 ## Reporting framework
 
 The repository's narrative follows the spirit of [STROBE](https://www.strobe-statement.org/): the design, setting, eligibility rules, variables, methods, results, and limitations are explicit. Causal assumptions follow the framework in Hernán and Robins' [*Causal Inference: What If*](https://www.hsph.harvard.edu/miguel-hernan/wp-content/uploads/sites/1268/2024/04/hernanrobins_WhatIf_26apr24.pdf). Balance diagnostics follow propensity-weighting guidance from [Austin and Stuart](https://pmc.ncbi.nlm.nih.gov/articles/PMC4626409/), and cross-fitting follows modern AIPW practice described by [Zhong et al.](https://pmc.ncbi.nlm.nih.gov/articles/PMC8796813/).
-
