@@ -4,6 +4,8 @@
 
 The revised project is suitable for a portfolio and for methodological discussion. It is not ready to support clinical or operational decisions because data provenance is unverified, the exposure threshold is not clinically validated, overlap is imperfect, and unmeasured confounding remains plausible.
 
+The supplied Colab notebook confirms that the intended method was propensity-score-based doubly robust AIPW and that Simpson's paradox was the central EDA story. Its cached 7.19-percentage-point estimate is not carried forward because the outcome models were evaluated in-sample with class weighting, the EDA and model used inconsistent threshold operators, and the displayed severity chart was not a standardized balance diagnostic. The repository preserves the intent while correcting those implementation issues.
+
 ## Question and source
 
 - Question: mortality risk difference for treatment delay at or above 160 minutes versus below 160 minutes among severity levels 1–3.
@@ -64,4 +66,3 @@ The revised analysis now matches the project title by restricting to severity le
 4. Compare AIPW with overlap weighting or targeted maximum likelihood under a prespecified analysis plan.
 5. Use negative controls or quantitative bias analysis to probe unmeasured confounding.
 6. Obtain clinical and data-governance review before external substantive claims.
-
