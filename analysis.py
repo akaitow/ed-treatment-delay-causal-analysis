@@ -1,4 +1,4 @@
-"""Minimal doubly robust analysis of ED treatment delay and mortality."""
+"""Doubly robust analysis of ED treatment delay and mortality."""
 
 from __future__ import annotations
 
@@ -6,6 +6,8 @@ import argparse
 import json
 from pathlib import Path
 
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -27,8 +29,8 @@ def load_data(path: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
     needed = ["Treatment_Delay_Minutes", "Mortality_Flag", *CONFOUNDERS]
     if missing := sorted(set(needed) - set(data.columns)):
         raise ValueError(f"Missing columns: {missing}")
-    cohort = data.loc[data["Severity_Level"].between(1, 3), needed].dropna().copy()
-    return data, cohort.reset_index(drop=True)
+    analysis_data = data[needed].dropna().copy()
+    return data, analysis_data.reset_index(drop=True)
 
 
 def model():
@@ -104,26 +106,30 @@ def style(ax) -> None:
     ax.tick_params(colors=MUTED)
 
 
-def plot_reversal(data: pd.DataFrame, cohort: pd.DataFrame, threshold: int, path: Path) -> None:
+def plot_reversal(data: pd.DataFrame, threshold: int, path: Path) -> None:
     rows = []
-    for population, frame in [("All visits", data), ("Severity levels 1–3", cohort)]:
+    populations = [("All visits", data)] + [
+        (f"Level {int(level)}", data.loc[data["Severity_Level"].eq(level)])
+        for level in sorted(data["Severity_Level"].dropna().unique())
+    ]
+    for population, frame in populations:
         high = frame["Treatment_Delay_Minutes"].ge(threshold)
-        for delay, mask in [(f"< {threshold} min", ~high), (f"≥ {threshold} min", high)]:
+        for delay, mask in [(f"< {threshold} min", ~high), (f">= {threshold} min", high)]:
             rows.append((population, delay, frame.loc[mask, "Mortality_Flag"].mean() * 100))
     chart = pd.DataFrame(rows, columns=["population", "delay", "mortality"])
 
     fig, ax = plt.subplots(figsize=(9, 5.5))
-    x, width = np.arange(2), 0.34
-    for offset, delay, color in [(-width / 2, f"< {threshold} min", LIGHT_BLUE), (width / 2, f"≥ {threshold} min", ORANGE)]:
+    x, width = np.arange(len(populations)), 0.34
+    for offset, delay, color in [(-width / 2, f"< {threshold} min", LIGHT_BLUE), (width / 2, f">= {threshold} min", ORANGE)]:
         values = chart.loc[chart["delay"].eq(delay), "mortality"]
         bars = ax.bar(x + offset, values, width, label=delay, color=color, edgecolor=INK, linewidth=0.5)
         ax.bar_label(bars, fmt="%.2f%%", padding=4)
-    ax.set_xticks(x, ["All visits", "Severity levels 1–3"])
+    ax.set_xticks(x, [name for name, _ in populations])
     ax.set_ylabel("Observed mortality (%)")
     ax.set_ylim(0, chart["mortality"].max() * 1.3)
     ax.legend(frameon=False)
     style(ax)
-    figure_title(fig, "Crude mortality by treatment delay", "The direction reverses after defining the low-severity cohort")
+    figure_title(fig, "The pooled average hides the within-severity pattern", "All five severity levels remain in the analysis")
     fig.subplots_adjust(top=0.82, left=0.10, right=0.96, bottom=0.12)
     fig.savefig(path, dpi=180, bbox_inches="tight", facecolor="white")
     plt.close(fig)
@@ -176,12 +182,12 @@ def plot_effect(result: dict, path: Path) -> None:
     ax.text(crude, 1.15, f"{crude:+.2f} pp", ha="center", color=INK)
     ax.text(adjusted, 0.15, f"{adjusted:+.2f} pp", ha="center", color=INK)
     ax.set_yticks([1, 0], ["Crude", "Doubly robust AIPW"])
-    ax.set_xlabel("Mortality risk difference (percentage points): high delay − lower delay")
+    ax.set_xlabel("Mortality risk difference (percentage points): high delay - lower delay")
     ax.set_ylim(-0.55, 1.55)
     style(ax)
     ax.grid(axis="x", color=GRID)
     ax.grid(axis="y", visible=False)
-    figure_title(fig, "Mortality risk difference in low-severity visits", "High delay is ≥160 minutes; horizontal interval is the bootstrap 95% CI")
+    figure_title(fig, "Adjusted mortality risk difference across all visits", "High delay is >=160 minutes; horizontal interval is the bootstrap 95% CI")
     fig.subplots_adjust(top=0.80, left=0.25, right=0.96, bottom=0.20)
     fig.savefig(path, dpi=180, bbox_inches="tight", facecolor="white")
     plt.close(fig)
@@ -192,21 +198,21 @@ def run_analysis(path: Path, output: Path, threshold: int = 160, bootstraps: int
     for folder in (figures, results, reports):
         folder.mkdir(parents=True, exist_ok=True)
 
-    data, cohort = load_data(path)
-    estimate = estimate_aipw(cohort, threshold)
-    estimate["ci_low"], estimate["ci_high"] = bootstrap_ci(cohort, threshold, bootstraps)
+    data, analysis_data = load_data(path)
+    estimate = estimate_aipw(analysis_data, threshold)
+    estimate["ci_low"], estimate["ci_high"] = bootstrap_ci(analysis_data, threshold, bootstraps)
     estimate.update({"threshold": threshold, "bootstraps": bootstraps, "confounders": CONFOUNDERS})
 
     (results / "summary.json").write_text(json.dumps(estimate, indent=2), encoding="utf-8")
     (reports / "results.md").write_text(
         "# Results\n\n"
-        f"Among {estimate['n']:,} severity 1–3 visits, the doubly robust AIPW risk difference was "
+        f"Among {estimate['n']:,} visits across severity levels 1-5, the doubly robust AIPW risk difference was "
         f"**{estimate['risk_difference'] * 100:+.2f} percentage points** "
         f"(bootstrap 95% CI {estimate['ci_low'] * 100:+.2f} to {estimate['ci_high'] * 100:+.2f}).\n",
         encoding="utf-8",
     )
-    plot_reversal(data, cohort, threshold, figures / "01_crude_mortality_reversal.png")
-    plot_severity(data, threshold, figures / "02_severity_mechanism.png")
+    plot_reversal(analysis_data, threshold, figures / "01_crude_mortality_reversal.png")
+    plot_severity(analysis_data, threshold, figures / "02_severity_mechanism.png")
     plot_effect(estimate, figures / "03_effect_estimate.png")
     return estimate
 
