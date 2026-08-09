@@ -1,7 +1,7 @@
 [project]
 name = "ed-treatment-delay-causal-analysis"
 version = "0.1.0"
-description = "Cross-fitted AIPW analysis of treatment delay and mortality in low-severity ED visits"
+description = "Cross-fitted AIPW analysis of ED treatment delay and mortality across all severity levels"
 requires-python = ">=3.10"
 dependencies = [
   "numpy>=1.26,<3",
@@ -14,4 +14,3 @@ dependencies = [
 
 [tool.ruff]
 line-length = 110
-
