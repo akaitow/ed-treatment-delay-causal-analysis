@@ -412,6 +412,102 @@ def plot_story_overview(data: pd.DataFrame, cohort: pd.DataFrame, threshold: int
     plt.close(figure)
 
 
+def plot_severity_mechanism(data: pd.DataFrame, threshold: int, output_path: Path) -> None:
+    """Show why the pooled delay comparison is confounded by severity."""
+    frame = data.copy()
+    frame["delay_group"] = np.where(
+        frame["Treatment_Delay_Minutes"].ge(threshold),
+        f"≥ {threshold} min",
+        f"< {threshold} min",
+    )
+    delay_order = [f"< {threshold} min", f"≥ {threshold} min"]
+    severity_order = sorted(frame["Severity_Level"].dropna().unique())
+
+    mortality = (
+        frame.groupby("Severity_Level")["Mortality_Flag"]
+        .mean()
+        .mul(100)
+        .reindex(severity_order)
+    )
+    severity_mix = (
+        frame.groupby(["delay_group", "Severity_Level"], observed=True)
+        .size()
+        .unstack(fill_value=0)
+        .reindex(index=delay_order, columns=severity_order, fill_value=0)
+    )
+    severity_mix = severity_mix.div(severity_mix.sum(axis=1), axis=0).mul(100)
+
+    severity_colors = ["#DBEAFE", "#BFDBFE", "#93C5FD", "#60A5FA", "#2563EB"]
+    figure, axes = plt.subplots(1, 2, figsize=(11, 5.6), gridspec_kw={"width_ratios": [0.9, 1.25]})
+
+    bars = axes[0].bar(
+        np.arange(len(severity_order)),
+        mortality.to_numpy(),
+        color=BLUE,
+        edgecolor=INK,
+        linewidth=0.5,
+    )
+    axes[0].set_xticks(np.arange(len(severity_order)), [str(int(value)) for value in severity_order])
+    axes[0].set_xlabel("Severity level")
+    axes[0].set_ylabel("Observed mortality rate (%)")
+    axes[0].set_ylim(0, mortality.max() * 1.25)
+    for bar, value in zip(bars, mortality):
+        axes[0].text(
+            bar.get_x() + bar.get_width() / 2,
+            value + mortality.max() * 0.025,
+            f"{value:.1f}%",
+            ha="center",
+            fontsize=9,
+            color=INK,
+        )
+    axes[0].set_title("Mortality by severity", loc="left", fontsize=12, fontweight="bold")
+    style_axis(axes[0])
+
+    bottom = np.zeros(len(delay_order))
+    for level, color in zip(severity_order, severity_colors):
+        values = severity_mix[level].to_numpy()
+        bars = axes[1].bar(
+            np.arange(len(delay_order)),
+            values,
+            bottom=bottom,
+            label=f"Level {int(level)}",
+            color=color,
+            edgecolor="white",
+            linewidth=0.7,
+        )
+        for bar, value, base in zip(bars, values, bottom):
+            if value >= 7:
+                axes[1].text(
+                    bar.get_x() + bar.get_width() / 2,
+                    base + value / 2,
+                    f"{value:.0f}%",
+                    ha="center",
+                    va="center",
+                    fontsize=8,
+                    color=INK if level <= 3 else "white",
+                    fontweight="bold",
+                )
+        bottom += values
+
+    axes[1].set_xticks(np.arange(len(delay_order)), delay_order)
+    axes[1].set_xlabel("Treatment-delay group")
+    axes[1].set_ylabel("Share of visits within group (%)")
+    axes[1].set_ylim(0, 100)
+    axes[1].set_title("Severity composition by delay", loc="left", fontsize=12, fontweight="bold")
+    axes[1].legend(title="Severity", ncol=5, frameon=False, loc="upper center", bbox_to_anchor=(0.5, 1.00), fontsize=8)
+    style_axis(axes[1])
+    axes[1].grid(axis="x", visible=False)
+
+    add_figure_title(
+        figure,
+        "Severity, mortality, and treatment timing",
+        f"All {len(frame):,} visits; higher-severity visits have higher mortality and are concentrated below {threshold} minutes",
+    )
+    figure.subplots_adjust(top=0.78, left=0.08, right=0.98, bottom=0.13, wspace=0.30)
+    figure.savefig(output_path, dpi=180, bbox_inches="tight", facecolor="white")
+    plt.close(figure)
+
+
 def plot_balance(balance: pd.DataFrame, output_path: Path, top_n: int = 18) -> None:
     display = balance.head(top_n).sort_values("abs_smd_before", ascending=True)
     figure, axis = plt.subplots(figsize=(10, 7.5))
@@ -420,7 +516,12 @@ def plot_balance(balance: pd.DataFrame, output_path: Path, top_n: int = 18) -> N
     axis.scatter(display["abs_smd_before"], y, color=ORANGE, s=46, label="Before weighting", zorder=3)
     axis.scatter(display["abs_smd_after"], y, color=BLUE, s=46, label="After weighting", zorder=3)
     axis.axvline(0.10, color=INK, linewidth=1, linestyle="--", label="0.10 reference")
-    axis.set_yticks(y, display["feature"])
+    readable_labels = (
+        display["feature"]
+        .str.replace("Dim_Patient.", "Patient ", regex=False)
+        .str.replace("_", " ", regex=False)
+    )
+    axis.set_yticks(y, readable_labels)
     axis.set_xlabel("Absolute standardized mean difference")
     axis.set_xlim(left=0)
     axis.legend(frameon=False, loc="lower right")
@@ -438,7 +539,7 @@ def plot_balance(balance: pd.DataFrame, output_path: Path, top_n: int = 18) -> N
 
 
 def plot_effect(primary: Estimate, output_path: Path) -> None:
-    labels = ["Crude risk difference", "Cross-fitted AIPW"]
+    labels = ["Crude risk difference", "Adjusted estimate (AIPW)"]
     values = np.array([primary.crude_risk_difference, primary.adjusted_risk_difference]) * 100
     low = np.array([np.nan, primary.ci_low]) * 100
     high = np.array([np.nan, primary.ci_high]) * 100
@@ -469,7 +570,7 @@ def plot_effect(primary: Estimate, output_path: Path) -> None:
     add_figure_title(
         figure,
         "Mortality risk difference in low-severity visits",
-        f"High delay is ≥{primary.threshold_minutes} minutes; AIPW interval uses patient-clustered influence curves",
+        f"Severity levels 1–3; high delay is ≥{primary.threshold_minutes} minutes; horizontal interval is the 95% CI",
     )
     figure.subplots_adjust(top=0.82, left=0.27, right=0.96, bottom=0.20)
     figure.savefig(output_path, dpi=180, bbox_inches="tight", facecolor="white")
@@ -607,6 +708,7 @@ def run_analysis(
     )
 
     plot_story_overview(data, cohort, threshold, figures_dir / "01_crude_mortality_reversal.png")
+    plot_severity_mechanism(data, threshold, figures_dir / "02_severity_mechanism.png")
     plot_balance(primary_balance, figures_dir / "02_covariate_balance.png")
     plot_effect(primary, figures_dir / "03_effect_estimate.png")
     plot_sensitivity(estimates, figures_dir / "04_threshold_sensitivity.png")

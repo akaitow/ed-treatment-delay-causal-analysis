@@ -1,63 +1,120 @@
-# Treatment delay and mortality in low-severity ED visits
+# Long treatment delays deserve attention—but 160 minutes is not a proven mortality threshold
 
-An observational causal-inference project that asks a deceptively simple question:
+**Stakeholder brief | 9,994 emergency-department visits | January 2024–December 2025**
 
-> Among emergency-department visits with severity levels 1–3, how does mortality differ when treatment starts at least 160 minutes after triage rather than sooner?
+## Executive Summary
 
-![Crude mortality reverses after restricting to low-severity visits](figures/01_crude_mortality_reversal.png)
+- **The operational signal warrants attention.** Among 5,216 low-severity visits, the adjusted analysis estimates **0.66 additional deaths per 100 visits** when treatment begins at or after 160 minutes rather than sooner.
+- **The evidence is not conclusive.** The 95% confidence interval ranges from **0.89 fewer to 2.22 additional deaths per 100 visits**, so the data remain compatible with no effect.
+- **The raw dashboard comparison is misleading.** Across all visits, longer delay appears safer because the sickest patients are treated sooner. This is a practical example of Simpson's paradox.
+- **Recommended decision:** monitor and reduce avoidable low-severity delays while validating the finding with better operational data. Do **not** treat 160 minutes as a clinically proven cutoff or use this analysis alone to change patient care.
 
-## The story in one minute
+## Situation — ED leaders need to understand whether long waits create avoidable risk
 
-The full dataset appears to tell a reassuring story: mortality is lower in the high-delay group (2.67% versus 3.40%). That comparison is misleading because patients treated sooner are much more severely ill.
+Treatment cannot always begin immediately, and emergency departments must prioritize the most urgent patients. The decision problem is therefore not “should every patient be treated in arrival order?” It is narrower:
 
-After restricting the question to 5,216 low-severity visits, the crude relationship reverses: mortality is 2.40% at or above 160 minutes versus 1.85% below 160 minutes. A cross-fitted augmented inverse probability weighted (AIPW) model estimates an adjusted risk difference of **+0.66 percentage points**, with a **95% confidence interval from −0.89 to +2.22 points**.
+> For patients already classified as low severity, is a long treatment delay associated with higher mortality after accounting for the factors that influence who waits?
 
-The point estimate is compatible with higher mortality under longer delay, but the interval also includes no effect and modest benefit. The evidence is therefore **hypothesis-generating, not conclusive**.
+The dataset covers 9,994 visits across 2024 and 2025. The primary analysis focuses on 5,216 visits at severity levels 1–3 and compares treatment starting **before 160 minutes** with treatment starting **at or after 160 minutes**. The 160-minute threshold is an operational scenario, not a validated clinical standard.
 
-## Why this project matters
+## Complication — the pooled average tells the wrong story
 
-This is a practical example of Simpson's paradox and the limits of observational causal inference. When deliberately assigning harmful delays would make an RCT unethical or impractical, causal methods can emulate a clearly defined intervention contrast from observed data. They do not recreate randomization: the result remains conditional on measured confounding, overlap, consistency, and correct time ordering.
+Across all visits, mortality appears *lower* in the high-delay group: **2.67% versus 3.40%**. After defining the low-severity population, the relationship reverses: mortality is **2.40% with high delay versus 1.85% with lower delay**.
 
-The most valuable result is not a dramatic causal claim; it is a transparent workflow that:
+![Observed mortality by treatment-delay group in all visits and the low-severity cohort](figures/01_crude_mortality_reversal.png)
 
-1. defines the low-severity cohort before modeling;
-2. separates pre-treatment covariates from downstream outcomes;
-3. uses propensity scores inside a doubly robust AIPW estimator;
-4. cross-fits propensity and outcome models by patient;
-5. reports balance, overlap, effective sample size, and extreme weights;
-6. keeps uncertainty and unmeasured confounding visible.
+*How to read this:* the left-hand comparison mixes patients with very different baseline risk. The right-hand comparison answers a narrower and more relevant operational question. The reversal is a warning that the overall average should not guide a delay policy.
 
-## Main results
+Severity explains much of the contradiction. Mortality rises sharply across severity levels, while visits at levels 4–5 are concentrated in the shorter-delay group. Faster treatment therefore inherits more high-risk patients, making the pooled shorter-delay mortality rate look worse.
 
-| Measure | Result |
-|---|---:|
-| Eligible visits / unique patients | 5,216 / 5,139 |
-| High-delay visits / deaths | 998 / 24 |
-| Lower-delay visits / deaths | 4,218 / 78 |
-| Crude mortality risk difference | +0.56 percentage points |
-| Adjusted AIPW risk difference | +0.66 percentage points |
-| 95% confidence interval | −0.89 to +2.22 percentage points |
-| Maximum absolute SMD, before / after weighting | 0.921 / 0.100 |
-| Propensities clipped to [0.01, 0.99] | 14 |
-| 99th percentile / maximum IPTW | 14.53 / 100.00 |
+![Mortality by severity and severity composition by treatment-delay group](figures/02_severity_mechanism.png)
 
-![Adjusted mortality risk difference](figures/03_effect_estimate.png)
+*So what:* descriptive statistics identify the bias but cannot remove it. A causal framework is needed to compare visits that were similar before treatment timing was determined.
 
-## Method
+## Question — would high delay increase mortality among comparable low-severity visits?
 
-- **Design:** observational visit-level cohort analysis covering 2024-01-01 through 2025-12-31.
-- **Population:** severity levels 1–3 with complete exposure, outcome, patient ID, and baseline covariates.
-- **Exposure:** treatment delay at or above 160 minutes versus below 160 minutes.
-- **Outcome:** in-visit mortality flag.
-- **Estimand:** average mortality risk difference in the eligible cohort.
-- **Adjustment:** cross-fitted AIPW with regularized logistic nuisance models and five patient-grouped folds.
-- **Uncertainty:** influence-curve standard error clustered by patient.
-- **Diagnostics:** standardized mean differences, propensity range and clipping, inverse-probability weight distribution, and effective sample size.
-- **Sensitivity:** the analysis is repeated at 120-, 160-, and 200-minute thresholds.
+The working hypothesis is:
 
-Start with the [storytelling notebook](notebooks/low_severity_delay_causal_analysis.ipynb) for the EDA, Simpson's paradox, RCT motivation, propensity scores, and doubly robust estimate. See [methodology.md](reports/methodology.md) for the full specification and [validation_report.md](reports/validation_report.md) for the quality review.
+> Among otherwise comparable severity 1–3 visits, starting treatment at or after 160 minutes increases in-visit mortality risk relative to starting sooner.
 
-## Reproduce the analysis
+| Decision element | Definition |
+|---|---|
+| Population | Severity levels 1–3 with complete required baseline data |
+| Exposure | Treatment delay ≥160 minutes versus <160 minutes |
+| Outcome | In-visit mortality |
+| Primary measure | Average mortality risk difference in the eligible cohort |
+| Comparison period | January 1, 2024–December 31, 2025 |
+
+An RCT would provide the strongest protection against confounding, but deliberately assigning harmful delays may be unethical or infeasible. This study instead emulates a defined intervention contrast from observational data. It cannot reproduce randomization and remains dependent on measured covariates and causal assumptions.
+
+## Evidence — adjustment preserves the risk signal, but uncertainty remains substantial
+
+### 1. Propensity weighting made the observed groups more comparable
+
+A propensity score estimates each visit's probability of experiencing high delay from information available before treatment. The analysis combines these scores with mortality outcome models in a **doubly robust AIPW estimator** and generates predictions out of sample using patient-grouped cross-fitting.
+
+Before weighting, eight measured features exceeded the conventional absolute standardized mean difference threshold of 0.10. After weighting, only one remained at that boundary; the maximum imbalance fell from **0.921 to 0.100**.
+
+![Measured baseline balance before and after propensity weighting](figures/02_covariate_balance.png)
+
+*How to read this:* dots moving toward zero indicate that high- and lower-delay visits became more comparable on measured baseline characteristics. This improves the comparison, but it cannot balance factors that were not recorded.
+
+### 2. The adjusted point estimate indicates possible harm, not proof
+
+The crude mortality difference in the low-severity cohort is **+0.56 percentage points**. After doubly robust adjustment, the estimate is **+0.66 percentage points**. The adjusted interval crosses zero: **−0.89 to +2.22 percentage points**.
+
+![Crude and adjusted mortality risk differences with uncertainty](figures/03_effect_estimate.png)
+
+*How to read this:* values to the right of zero indicate higher mortality under high delay. The adjusted point lies to the right, but its confidence interval spans both sides of zero. The estimated direction is concerning; its magnitude is not precise enough for a definitive causal claim.
+
+### 3. The direction is similar across thresholds, while precision deteriorates
+
+Adjusted point estimates remain positive at 120, 160, and 200 minutes, but every confidence interval includes zero. The 200-minute estimate is especially imprecise because fewer visits support that comparison.
+
+![Adjusted mortality estimates across treatment-delay thresholds](figures/04_threshold_sensitivity.png)
+
+*So what:* the finding is not unique to one cutoff, but the sensitivity analysis does not establish a safe or harmful threshold. It supports continued investigation rather than a binary 160-minute rule.
+
+## Answer — manage the operational risk and strengthen the evidence
+
+The most defensible stakeholder conclusion is:
+
+> Longer delays may increase mortality among low-severity ED visits, but this dataset does not establish that 160 minutes is a causal threshold. Reduce avoidable delay as a process-quality objective and collect the evidence needed for a decision-grade estimate.
+
+Recommended next steps:
+
+1. **Create a delay early-warning view.** Monitor median and 90th-percentile treatment delay by severity, hospital, department, and week; flag sustained movement toward 160 minutes before it becomes routine.
+2. **Diagnose the treatment-start process.** Examine staffing coverage, queue transitions, room availability, handoffs, and whether lower-severity visits are unintentionally deprioritized after triage.
+3. **Measure the missing confounders.** Add crowding, occupancy, staffing ratios, shift, day of week, arrival volume, and clinician-assessed urgency before re-estimating the effect.
+4. **Evaluate operational improvements prospectively.** Predefine the cohort, outcomes, and estimand, then assess a feasible process intervention using a stepped rollout, interrupted time series, or another ethically appropriate design.
+5. **Use mortality as a guardrail, not a weekly performance KPI.** Deaths are rare in this cohort; pair mortality with timelier process and safety outcomes while aggregating mortality over a stable review window.
+
+## Further questions stakeholders should resolve
+
+- Does the source data dictionary confirm that severity levels 1–3 are the intended low-severity population?
+- Why was 160 minutes selected, and is there an external clinical or service-level benchmark?
+- Do results persist after adding crowding, staffing, shift, and calendar-time measures?
+- Which hospitals, departments, or time periods drive extreme propensity weights and residual imbalance?
+- Would an operational intervention reduce delay without shifting risk to higher-severity patients?
+
+## Caveats and assumptions
+
+- The workbook's provenance, generation process, de-identification status, and public-use license have not been independently verified; raw data are excluded from this repository.
+- Treatment timing was not randomized. AIPW addresses measured confounding only under consistency, positivity, correct time ordering, model adequacy, and no important unmeasured confounding.
+- Mortality is rare in the eligible cohort: 102 deaths across 5,216 visits. This produces wide confidence intervals.
+- Some propensities are near one: 14 values were clipped to `[0.01, 0.99]`, the 99th-percentile weight was 14.53, and the maximum weight was 100.
+- Calendar time, staffing, crowding, and other operational conditions are not fully measured in the available model table.
+
+## Analysis resources
+
+- [Storytelling notebook](notebooks/low_severity_delay_causal_analysis.ipynb) — executable EDA, Simpson's paradox, propensity scores, and doubly robust estimation
+- [Methodology](reports/methodology.md) — estimand, cohort, covariates, assumptions, and uncertainty
+- [Validation report](reports/validation_report.md) — implementation issues corrected and remaining limitations
+- [Results snapshot](reports/results.md) — aggregate numerical results
+- [Chart map](reports/chart_map.md) — visual evidence and design rationale
+
+<details>
+<summary><strong>Reproduce the analysis</strong></summary>
 
 ```bash
 python -m venv .venv
@@ -73,37 +130,25 @@ python analysis.py --input data/raw/mortality.xlsx
 python -m unittest discover -s tests -v
 ```
 
-The script rewrites the aggregate files in `results/`, the four figures in `figures/`, and [results.md](reports/results.md). It does not export row-level patient data.
+The script regenerates aggregate results and figures without exporting row-level patient data.
 
-## Repository map
+</details>
+
+<details>
+<summary><strong>Repository structure</strong></summary>
 
 ```text
 .
-├── analysis.py                 # complete reproducible analysis
-├── data/
-│   ├── README.md               # data contract and publication safeguards
-│   └── raw/                    # ignored by Git
-├── figures/                    # publication-ready aggregate charts
-├── notebooks/
-│   └── low_severity_delay_causal_analysis.ipynb
-├── reports/
-│   ├── methodology.md          # estimand, models, assumptions, diagnostics
-│   ├── results.md              # generated results snapshot
-│   ├── validation_report.md    # issues fixed and remaining caveats
-│   └── chart_map.md            # visual design and evidence map
+├── analysis.py                 # reproducible causal analysis
+├── data/                       # data contract; raw workbook ignored by Git
+├── figures/                    # aggregate stakeholder visuals
+├── notebooks/                  # executed storytelling notebook
+├── reports/                    # methods, results, validation, chart map
 ├── results/                    # machine-readable aggregate outputs
 └── tests/                      # deterministic utility tests
 ```
 
-## Limitations
-
-- The workbook's provenance, generation process, de-identification status, and public-use license have not been independently verified. Raw data are therefore excluded.
-- The 160-minute threshold is an operational choice, not a validated clinical cutoff.
-- Treatment timing is not randomized. AIPW only addresses measured confounding under its assumptions.
-- Calendar time, staffing, crowding, and other operational factors are not fully measured in the model table.
-- Some estimated propensities are near one, producing large weights and sensitivity to model specification.
-- Mortality is rare in the eligible cohort (102 deaths), so confidence intervals are wide.
-- Severity numbering is interpreted from the observed monotonic mortality pattern and project context; the source data dictionary should confirm that levels 1–3 are the intended low-severity group.
+</details>
 
 ## References
 
@@ -112,6 +157,4 @@ The script rewrites the aggregate files in `results/`, the four figures in `figu
 - Austin PC, Stuart EA. [Moving towards best practice when using inverse probability of treatment weighting](https://pmc.ncbi.nlm.nih.gov/articles/PMC4626409/)
 - Zhong Y, et al. [AIPW: augmented inverse probability-weighted estimation of average causal effects](https://pmc.ncbi.nlm.nih.gov/articles/PMC8796813/)
 
-## Responsible use
-
-This repository is an analytical portfolio project, not clinical guidance. Do not use its estimates for patient-care or operational decisions without validating the source data, clinical definitions, causal assumptions, and model specification with domain experts.
+> **Responsible use:** This repository is an analytical portfolio project, not clinical guidance. Validate the source data, clinical definitions, causal assumptions, and model specification with domain experts before using the findings for patient-care or operational decisions.
