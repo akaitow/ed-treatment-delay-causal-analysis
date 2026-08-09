@@ -438,7 +438,7 @@ def plot_severity_mechanism(data: pd.DataFrame, threshold: int, output_path: Pat
     severity_mix = severity_mix.div(severity_mix.sum(axis=1), axis=0).mul(100)
 
     severity_colors = ["#DBEAFE", "#BFDBFE", "#93C5FD", "#60A5FA", "#2563EB"]
-    figure, axes = plt.subplots(1, 2, figsize=(11, 5.6), gridspec_kw={"width_ratios": [0.9, 1.25]})
+    figure, axes = plt.subplots(1, 2, figsize=(12, 5.6), gridspec_kw={"width_ratios": [0.9, 1.10]})
 
     bars = axes[0].bar(
         np.arange(len(severity_order)),
@@ -494,7 +494,16 @@ def plot_severity_mechanism(data: pd.DataFrame, threshold: int, output_path: Pat
     axes[1].set_ylabel("Share of visits within group (%)")
     axes[1].set_ylim(0, 100)
     axes[1].set_title("Severity composition by delay", loc="left", fontsize=12, fontweight="bold")
-    axes[1].legend(title="Severity", ncol=5, frameon=False, loc="upper center", bbox_to_anchor=(0.5, 1.00), fontsize=8)
+    axes[1].legend(
+        title="Severity",
+        ncol=1,
+        frameon=False,
+        loc="center left",
+        bbox_to_anchor=(1.02, 0.5),
+        fontsize=9,
+        title_fontsize=9,
+        borderaxespad=0,
+    )
     style_axis(axes[1])
     axes[1].grid(axis="x", visible=False)
 
@@ -503,7 +512,7 @@ def plot_severity_mechanism(data: pd.DataFrame, threshold: int, output_path: Pat
         "Severity, mortality, and treatment timing",
         f"All {len(frame):,} visits; higher-severity visits have higher mortality and are concentrated below {threshold} minutes",
     )
-    figure.subplots_adjust(top=0.78, left=0.08, right=0.98, bottom=0.13, wspace=0.30)
+    figure.subplots_adjust(top=0.78, left=0.07, right=0.84, bottom=0.13, wspace=0.30)
     figure.savefig(output_path, dpi=180, bbox_inches="tight", facecolor="white")
     plt.close(figure)
 
